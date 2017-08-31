@@ -9,16 +9,15 @@ public class Messaging {
     Sender sender;
     Recipient recipient;
     Date timestamp;
-    String message;
+    Message message;
 
     @Data
-    class Sender {
-        String id;
+    public class Sender {
+        private String id;
     }
 
-    @Data
-    class Recipient{
-        String id;
-    }
+
+
+
 }
 

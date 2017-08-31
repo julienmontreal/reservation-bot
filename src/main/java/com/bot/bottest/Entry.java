@@ -7,9 +7,9 @@ import java.util.List;
 
 @Data
 public class Entry {
-    String id;
-    Date time;
-    List<Messaging> messaging;
+    private String id;
+    private Date time;
+    private List<Messaging> messaging;
 }
 
 

@@ -7,7 +7,7 @@ import java.util.List;
 @Data
 public class Payload {
 
-    String object;
-    List<Entry> entry;
+    private String object;
+    private List<Entry> entry;
 
 }
