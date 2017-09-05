@@ -135,7 +135,7 @@ public class BotController {
     }
 
     private void sendGenericMessage(String recipientId) {
-       /* var messageData = {
+       /* Message messageData = {
             recipient: {
             id: recipientId
         },
