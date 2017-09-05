@@ -1,5 +1,9 @@
 package com.bot.bottest;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
@@ -11,9 +15,12 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Date;
+import java.util.Objects;
 
 @RestController
 public class BotController {
+
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @GetMapping("/callback")
     public String callback(@RequestParam(value = "hub.mode", required = false) String hubMode,
@@ -22,8 +29,17 @@ public class BotController {
         return hubChallenge;
     }
 
-    @PostMapping("/webhook")
+    @GetMapping("/health")
+    public String healthCheck() {
+        logger.info("/health called");
+
+        return "OK";
+    }
+
+    @PostMapping("/callback")
     public ResponseEntity<Void> receiveMessage(@RequestBody Payload data) {
+
+        logger.info("POST /callback called with payload " + data.toString());
         // Make sure this is a page subscription
         if ("page".equals(data.getObject())) {
 
@@ -33,11 +49,13 @@ public class BotController {
                 Date timeOfEvent = entry.getTime();
 
                 // Iterate over each messaging event
-                entry.getMessaging().stream().forEach(event -> {
+                entry.getMessaging().stream()
+                    .filter(Objects::nonNull)
+                    .forEach(event -> {
                     if (!StringUtils.isEmpty(event.getMessage())) {
-                        //receivedMessage(event);
+                        receivedMessage(event);
                     } else {
-                        //console.log("Webhook received unknown event: ", event);
+                        logger.warn("Received unknown event: ", event);
                     }
                 });
             });
@@ -47,9 +65,11 @@ public class BotController {
             // You must send back a 200, within 20 seconds, to let us know
             // you've successfully received the callback. Otherwise, the request
             // will time out and we will keep trying to resend.
+            logger.info("POST /callback returned 200");
             return new ResponseEntity<Void>(HttpStatus.ACCEPTED);
         }
 
+        logger.info("POST /callback returned 400");
         return new ResponseEntity<Void>(HttpStatus.BAD_REQUEST);
     }
 
@@ -60,9 +80,8 @@ public class BotController {
         Date timeOfMessage = event.getTimestamp();
         Message message = event.getMessage();
 
-        // console.log("Received message for user %d and page %d at %d with message:",
-        //   senderID, recipientID, timeOfMessage);
-        //console.log(JSON.stringify(message));
+        logger.info("Received message for user %d and page %d at %d with message:", senderID, recipientID, timeOfMessage);
+        logger.info(message.toString());
 
         String messageId = message.getMid();
 
@@ -93,6 +112,7 @@ public class BotController {
         Message message = new Message();
         message.setText(messageText);
         messageData.setMessage(message);
+        messageData.setTimestamp(new Date());
         callSendAPI(messageData);
     }
 
@@ -102,6 +122,13 @@ public class BotController {
         String uri = "https://graph.facebook.com/v2.6/me/messages";
         String accessToken =
             "EAAGgZBpa7WYkBAEqlrvtVt5hd0q8Tb2dhZCjmLNXk72HRcj4A34kkMrMxSUoUEhpP3LZCRDRsDQVyWXbBLhJmZBujxgvixcbBEueBZBXCyeX0koKGSO4JaLSQPeApfqR6LTbkHZCeUAON6M4HxzoPMMmiZBabZCAowrMhnUdQvTtfQZDZD";
+        uri.concat("?access_token="+accessToken);
+        ObjectMapper mapper = new ObjectMapper();
+        try{
+            logger.info("sending response to facebook with payload: " + mapper.writeValueAsString(messageData));
+        } catch (JsonProcessingException e) {
+            logger.error("error while parsing data to json");
+        }
         restTemplate.postForEntity(uri, messageData, Messaging.class);
     }
 

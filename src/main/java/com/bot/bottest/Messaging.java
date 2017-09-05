@@ -8,7 +8,7 @@ import java.util.Date;
 public class Messaging {
     Sender sender;
     Recipient recipient;
-    Date timestamp;
+    Date timestamp;//TODO change for LocalDateTime
     Message message;
 
     @Data
