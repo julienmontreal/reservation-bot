@@ -64,6 +64,8 @@ public class BotController {
             //
             // You must send back a 200, within 20 seconds, to let us know
             // you've successfully received the callback. Otherwise, the request
+
+
             // will time out and we will keep trying to resend.
             logger.info("POST /callback returned 200");
             return new ResponseEntity<Void>(HttpStatus.ACCEPTED);
