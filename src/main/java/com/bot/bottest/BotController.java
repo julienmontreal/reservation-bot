@@ -1,10 +1,19 @@
 package com.bot.bottest;
 
+import com.bot.bottest.dto.request.Message;
+import com.bot.bottest.dto.request.Messaging;
+import com.bot.bottest.dto.request.Payload;
+import com.bot.bottest.dto.send.SendMessage;
+import com.bot.bottest.dto.send.SendPayload;
+import com.bot.bottest.dto.send.SendRecipient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Date;
@@ -76,14 +86,13 @@ public class BotController {
     }
 
 
-    private void receivedMessage(Messaging event) {
+    public void receivedMessage(Messaging event) {
         String senderID = event.getSender().getId();
         String recipientID = event.getRecipient().getId();
         Date timeOfMessage = event.getTimestamp();
         Message message = event.getMessage();
 
-        logger.info("Received message for user %d and page %d at %d with message:", senderID, recipientID, timeOfMessage);
-        logger.info(message.toString());
+        logger.info(String.format("Received message for user %s and page %s at %s with message: %s", senderID, recipientID, timeOfMessage, message.toString()));
 
         String messageId = message.getMid();
 
@@ -103,39 +112,49 @@ public class BotController {
                     sendTextMessage(senderID, messageText);
             }
         } else if (!StringUtils.isEmpty(messageAttachments)) {
-            sendTextMessage(senderID, "Message with attachment received");
+            sendTextMessage(senderID, "SendMessage with attachment received");
         }
     }
 
     private void sendTextMessage(String recipientId, String messageText) {
-        Messaging messageData = new Messaging();
-        Recipient recipient = new Recipient(recipientId);
-        messageData.setRecipient(recipient);
-        Message message = new Message();
+        SendRecipient recipient = new SendRecipient(recipientId);
+        SendMessage message = new SendMessage();
         message.setText(messageText);
-        messageData.setMessage(message);
-        messageData.setTimestamp(new Date());
-        callSendAPI(messageData);
+        SendPayload sendPayload = new SendPayload(recipient, message);
+        callSendAPI(sendPayload);
     }
 
-    private void callSendAPI(Messaging messageData) {
+    public void callSendAPI(SendPayload sendPayload) {
 
         RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+
         String uri = "https://graph.facebook.com/v2.6/me/messages";
         String accessToken =
             "EAAGgZBpa7WYkBAEqlrvtVt5hd0q8Tb2dhZCjmLNXk72HRcj4A34kkMrMxSUoUEhpP3LZCRDRsDQVyWXbBLhJmZBujxgvixcbBEueBZBXCyeX0koKGSO4JaLSQPeApfqR6LTbkHZCeUAON6M4HxzoPMMmiZBabZCAowrMhnUdQvTtfQZDZD";
-        uri.concat("?access_token="+accessToken);
+        uri = uri.concat("?access_token="+accessToken);
         ObjectMapper mapper = new ObjectMapper();
+        String json = "";
         try{
-            logger.info("sending response to facebook with payload: " + mapper.writeValueAsString(messageData));
+            json = mapper.writeValueAsString(sendPayload);
+            logger.info("sending response to facebook with payload: " + json);
         } catch (JsonProcessingException e) {
             logger.error("error while parsing data to json");
         }
-        restTemplate.postForEntity(uri, messageData, Messaging.class);
+
+        HttpEntity<String> entity = new HttpEntity<>(json, headers);
+        ResponseEntity<Object> response = null;
+        try {
+            response = restTemplate.postForEntity(uri, entity, Object.class);
+        } catch (HttpClientErrorException e) {
+            logger.info(e.getResponseBodyAsString());
+        }
     }
 
     private void sendGenericMessage(String recipientId) {
-       /* Message messageData = {
+       /* SendMessage messageData = {
             recipient: {
             id: recipientId
         },
@@ -156,7 +175,7 @@ public class BotController {
                         }, {
                             type: "postback",
                                 title: "Call Postback",
-                                payload: "Payload for first bubble",
+                                payload: "SendPayload for first bubble",
                         }],
                     }, {
                         title: "touch",
@@ -170,7 +189,7 @@ public class BotController {
                         }, {
                             type: "postback",
                                 title: "Call Postback",
-                                payload: "Payload for second bubble",
+                                payload: "SendPayload for second bubble",
                         }]
                     }]
                 }

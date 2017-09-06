@@ -1,5 +1,6 @@
-package com.bot.bottest;
+package com.bot.bottest.dto.request;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.util.Date;
@@ -12,12 +13,10 @@ public class Messaging {
     Message message;
 
     @Data
-    public class Sender {
+    @AllArgsConstructor
+    public static class Sender {
         private String id;
     }
-
-
-
 
 }
 
